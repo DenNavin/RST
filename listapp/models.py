@@ -21,7 +21,7 @@ class Task(models.Model):
 
 
 class Tag(models.Model):
-    task = models.ForeignKey(Task, on_delete=models.CASCADE)
+    task = models.ForeignKey(Task, related_name='tags', on_delete=models.CASCADE)
     title = models.CharField(max_length=70)
 
 

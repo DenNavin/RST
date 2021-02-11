@@ -1,6 +1,31 @@
 from rest_framework import serializers
 
-from .models import Task, Tag
+from .models import Task, Tag, CustomUser
+
+
+class RegistrationSerializer(serializers.ModelSerializer):
+    password2 = serializers.CharField(style={'input_name': 'password'}, write_only=True)
+
+    class Meta:
+        model = CustomUser
+        fields = ['email', 'username', 'password', 'password2']
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
+
+    def save(self):
+        customuser = CustomUser(
+            email = self.validated_data['email'],
+            username = self.validated_data['username']
+        )
+        password = self.validated_data['password']
+        password2 = self.validated_data['password2']
+
+        if password != password2:
+            raise serializers.ValidationError({'password': 'Passwords must match'})
+        customuser.set_password(password)
+        customuser.save()
+        return customuser
 
 
 class TagSerializer(serializers.Serializer):
@@ -21,6 +46,7 @@ class TaskFullSerializer(serializers.Serializer):
     description = serializers.CharField(max_length=800)
     date = serializers.DateField()
     user_id = serializers.IntegerField()
+    tags = TaskSerializer(many=True, read_only=True)
 
     def create(self, validated_data):
         return Task.objects.create(**validated_data)
