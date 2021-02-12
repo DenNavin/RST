@@ -1,16 +1,20 @@
 from django.http import Http404
 from django.shortcuts import render
+from rest_framework.authtoken.models import Token
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view
+from rest_framework.permissions import IsAuthenticated
 
 from .models import Task, Tag
 from .serializers import TaskSerializer, TaskFullSerializer, TagSerializer, RegistrationSerializer
 
 
 class TaskView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         task = Task.objects.all()
         serializer = TaskSerializer(task, many=True)
@@ -25,6 +29,8 @@ class TaskView(APIView):
 
 
 class TaskViewByID(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get_object(self, pk):
         try:
             return Task.objects.get(pk=pk)
@@ -53,6 +59,8 @@ class TaskViewByID(APIView):
 
 
 class TagView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         tag = Tag.objects.all()
         serializer = TagSerializer(tag, many=True)
@@ -71,6 +79,8 @@ def registration_view(request):
             data['response'] = 'successfully registered user'
             data['email'] = customuser.email
             data['username'] = customuser.username
+            token = Token.objects.get(user=customuser).key
+            data['token'] = token
         else:
             data = serializer.errors
         return Response(data)
