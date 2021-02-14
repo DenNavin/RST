@@ -1,28 +1,40 @@
 from django.http import Http404
-from django.shortcuts import render
 from rest_framework.authtoken.models import Token
-from rest_framework.generics import get_object_or_404
+from rest_framework.filters import SearchFilter
+from rest_framework.generics import get_object_or_404, ListAPIView
 from rest_framework.response import Response
-from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view
 from rest_framework.permissions import IsAuthenticated
+from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Task, Tag
-from .serializers import TaskSerializer, TaskFullSerializer, TagSerializer, RegistrationSerializer
+from .serializers import (
+    TaskSerializer,
+    TaskFullSerializer,
+    RegistrationSerializer,
+    TagForFilterSerializer)
 
 
-class TaskView(APIView):
+class TaskView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        task = Task.objects.all()
-        serializer = TaskSerializer(task, many=True)
-        return Response({'tasks': serializer.data})
+    def get_queryset(self):
+        user = self.request.user
+        return Task.objects.filter(user=user)
+
+    serializer_class = TaskSerializer
+    filter_backends = [SearchFilter]
+    search_fields = ['title']
+
+
+class TaskCreateView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        task = request.data.get('task')
-        serializer = TaskFullSerializer(data=task)
+        user = self.request.user
+        task = Task(user=user)
+        serializer = TaskFullSerializer(task, data=request.data)
         if serializer.is_valid(raise_exception=True):
             task_saved = serializer.save()
         return Response({"success": "'{}' created successfully".format(task_saved.title)})
@@ -38,33 +50,39 @@ class TaskViewByID(APIView):
             raise Http404
 
     def get(self, request, pk, format=None):
-        task = get_object_or_404(Task.objects.all(), pk=pk)
+        user = self.request.user
+        task = get_object_or_404(Task.objects.filter(user=user), pk=pk)
         serializer = TaskFullSerializer(task)
         return Response(serializer.data)
 
     def put(self, request, pk):
-        task = get_object_or_404(Task.objects.all(), pk=pk)
+        user = self.request.user
+        task = get_object_or_404(Task.objects.filter(user=user), pk=pk)
         data = request.data.get('task')
-        serializer = TaskSerializer(instance=task, data=data, partial=True)
+        serializer = TaskFullSerializer(instance=task, data=data, partial=True)
         if serializer.is_valid(raise_exception=True):
             task_saved = serializer.save()
 
         return Response({'success': f"task '{task_saved.title}' updated successfully"})
 
     def delete(self, request, pk):
-        task = get_object_or_404(Task.objects.all(), pk=pk)
+        user = self.request.user
+        task = get_object_or_404(Task.objects.filter(user=user), pk=pk)
         task.delete()
 
         return Response({'success': f"task '{pk}' deleted successfully"}, status=204)
 
 
-class TagView(APIView):
+class TagView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        tag = Tag.objects.all()
-        serializer = TagSerializer(tag, many=True)
-        return Response({'tags': serializer.data})
+    def get_queryset(self):
+        user = self.request.user
+        return Tag.objects.filter(user=user)
+
+    serializer_class = TagForFilterSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['title']
 
 
 @api_view(['POST'])

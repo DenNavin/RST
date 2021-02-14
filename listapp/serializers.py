@@ -30,7 +30,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
 class TagSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=70)
-    task_id = serializers.IntegerField()
+    #task_id = serializers.IntegerField()
 
     def create(self, validated_data):
         return Task.objects.create(**validated_data)
@@ -39,14 +39,15 @@ class TagSerializer(serializers.Serializer):
 class TaskSerializer(serializers.Serializer):
     description = serializers.CharField(max_length=800)
     date = serializers.DateField()
+    tags = TagSerializer(many=True, read_only=True)
 
 
 class TaskFullSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=70, allow_blank=False)
     description = serializers.CharField(max_length=800)
     date = serializers.DateField()
-    user_id = serializers.IntegerField()
-    tags = TaskSerializer(many=True, read_only=True)
+    #user_id = serializers.IntegerField()
+    tags = TagSerializer(many=True, read_only=True)
 
     def create(self, validated_data):
         return Task.objects.create(**validated_data)
@@ -61,5 +62,15 @@ class TaskFullSerializer(serializers.Serializer):
         return task
 
 
+class TaskForFilterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = ['title', 'description', 'date']
 
 
+class TagForFilterSerializer(serializers.ModelSerializer):
+    task = TaskForFilterSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Tag
+        fields = ['title', 'task']
